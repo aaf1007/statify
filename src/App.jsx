@@ -17,6 +17,11 @@ const TIME_RANGES = [
   { id: 'long_term', label: 'All Time' },
 ];
 
+const ITEM_LIMITS = [
+  { id: 10, label: 'Top 10' },
+  { id: 30, label: 'Top 30' },
+];
+
 const numberFormatter = new Intl.NumberFormat();
 
 function App() {
@@ -27,6 +32,7 @@ function App() {
   const [authError, setAuthError] = useState('');
   const [profile, setProfile] = useState(null);
   const [selectedRange, setSelectedRange] = useState('medium_term');
+  const [selectedLimit, setSelectedLimit] = useState(10);
   const [statsError, setStatsError] = useState('');
   const [loadingStats, setLoadingStats] = useState(false);
   const [stats, setStats] = useState({
@@ -80,15 +86,15 @@ function App() {
   }, [configReady]);
 
   const loadStats = useCallback(
-    async (range) => {
+    async (range, limit) => {
       if (status !== 'ready') return;
       setLoadingStats(true);
       setStatsError('');
 
       try {
         const [artists, tracks, recent] = await Promise.all([
-          fetchTopItems('artists', range),
-          fetchTopItems('tracks', range),
+          fetchTopItems('artists', range, limit),
+          fetchTopItems('tracks', range, limit),
           fetchRecentlyPlayed(),
         ]);
 
@@ -108,9 +114,9 @@ function App() {
 
   useEffect(() => {
     if (status === 'ready') {
-      loadStats(selectedRange);
+      loadStats(selectedRange, selectedLimit);
     }
-  }, [status, selectedRange, loadStats]);
+  }, [status, selectedRange, selectedLimit, loadStats]);
 
   const handleLogout = useCallback(() => {
     clearSpotifySession();
@@ -201,6 +207,21 @@ VITE_SPOTIFY_REDIRECT_URI=http://localhost:5173`}
                   </button>
                 ))}
               </div>
+              <div className="limit-toggle">
+                {ITEM_LIMITS.map((limit) => (
+                  <button
+                    key={limit.id}
+                    className={
+                      limit.id === selectedLimit
+                        ? 'limit-toggle__button is-active'
+                        : 'limit-toggle__button'
+                    }
+                    onClick={() => setSelectedLimit(limit.id)}
+                  >
+                    {limit.label}
+                  </button>
+                ))}
+              </div>
             </div>
             {loadingStats && (
               <p className="muted">Fetching fresh insights…</p>
@@ -235,9 +256,9 @@ VITE_SPOTIFY_REDIRECT_URI=http://localhost:5173`}
                   image={artist.images?.[2]?.url}
                   title={artist.name}
                   subtitle={
-                    artist.genres?.length
-                      ? artist.genres.slice(0, 2).join(' • ')
-                      : 'No genre data'
+                    artist.popularity !== undefined
+                      ? `Popularity: ${artist.popularity}/100`
+                      : 'No popularity data'
                   }
                   metricLabel="Followers"
                   metricValue={numberFormatter.format(
@@ -277,6 +298,7 @@ VITE_SPOTIFY_REDIRECT_URI=http://localhost:5173`}
     handleLogout,
     profile,
     selectedRange,
+    selectedLimit,
     stats,
     statsError,
     status,
