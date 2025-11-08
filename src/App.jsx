@@ -255,11 +255,6 @@ VITE_SPOTIFY_REDIRECT_URI=http://localhost:5173`}
                   rank={index + 1}
                   image={artist.images?.[2]?.url}
                   title={artist.name}
-                  subtitle={
-                    artist.popularity !== undefined
-                      ? `Popularity: ${artist.popularity}/100`
-                      : 'No popularity data'
-                  }
                   metricLabel="Followers"
                   metricValue={numberFormatter.format(
                     artist.followers?.total || 0
