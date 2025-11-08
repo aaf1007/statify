@@ -95,7 +95,7 @@ function App() {
         const [artists, tracks, recent] = await Promise.all([
           fetchTopItems('artists', range, limit),
           fetchTopItems('tracks', range, limit),
-          fetchRecentlyPlayed(),
+          fetchRecentlyPlayed(limit),
         ]);
 
         setStats({
