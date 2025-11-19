@@ -2,7 +2,7 @@ import './globals.css';
 import './styles/dashboard.css';
 
 export const metadata = {
-  title: 'Staify',
+  title: 'Statify',
   description:
     'Personal top tracks, artists, and listening stats powered by the Spotify Web API.',
 };

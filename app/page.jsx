@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ProfileCard from './components/ProfileCard';
 import StatRow from './components/StatRow';
@@ -29,9 +29,31 @@ const ITEM_LIMITS = [
 
 const numberFormatter = new Intl.NumberFormat();
 
+// Disable static rendering; rely on client data fetching and URL state.
+export const dynamic = 'force-dynamic';
+
 // Client component because it relies on browser storage and URL params for OAuth.
 // Layout customization tip: wrap sections with your own containers or swap the header/main markup below to change spacing/structure.
 export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="app">
+          <main className="app__content">
+            <section className="card card--center">
+              <div className="loader" aria-hidden />
+              <p>Loading your dashboard…</p>
+            </section>
+          </main>
+        </div>
+      }
+    >
+      <DashboardPage />
+    </Suspense>
+  );
+}
+
+function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 

@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 // Displays a single ranked item with artwork, title, subtitle, and an optional metric.
 // Layout tweaks: adjust the grid by changing classNames, or swap the metric block to the left/right as needed.
 export default function StatRow({
@@ -14,7 +16,16 @@ export default function StatRow({
   return (
     <li className="entity">
       <span className="entity__rank">{rank}</span>
-      {image && <img src={image} alt="" className="entity__thumb" />}
+      {image && (
+        <Image
+          src={image}
+          alt=""
+          width={56}
+          height={56}
+          className="entity__thumb"
+          sizes="56px"
+        />
+      )}
       <div className="entity__meta">
         <a
           href={externalUrl || '#'}

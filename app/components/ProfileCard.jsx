@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 // Shows the signed-in Spotify user's avatar and quick metadata with a sign-out button.
 // Layout tweaks: wrap the section in your own container, swap the avatar/title stack, or move the logout button.
 export default function ProfileCard({ profile, onLogout, followerLabel }) {
@@ -26,10 +28,13 @@ function ProfileAvatar({ profile }) {
   const image = profile?.images?.[0]?.url;
   if (image) {
     return (
-      <img
+      <Image
         src={image}
         alt={profile?.display_name || 'Spotify user'}
         className="profile__avatar"
+        width={80}
+        height={80}
+        sizes="80px"
       />
     );
   }
