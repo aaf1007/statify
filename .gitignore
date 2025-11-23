@@ -28,4 +28,5 @@ dist-ssr
 DEPLOYMENT_NOTES.md
 
 # .envfiles
-*.env
+.env.local
+.env.example

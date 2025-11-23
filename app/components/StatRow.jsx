@@ -2,8 +2,7 @@
 
 import Image from 'next/image';
 
-// Displays a single ranked item with artwork, title, subtitle, and an optional metric.
-// Layout tweaks: adjust the grid by changing classNames, or swap the metric block to the left/right as needed.
+// Displays a single ranked item as a Y2K CD case with inline detail on hover.
 export default function StatRow({
   rank,
   image,
@@ -14,33 +13,52 @@ export default function StatRow({
   externalUrl,
 }) {
   return (
-    <li className="entity">
-      <span className="entity__rank">{rank}</span>
-      {image && (
-        <Image
-          src={image}
-          alt=""
-          width={56}
-          height={56}
-          className="entity__thumb"
-          sizes="56px"
-        />
-      )}
-      <div className="entity__meta">
-        <a
-          href={externalUrl || '#'}
-          target={externalUrl ? '_blank' : undefined}
-          rel={externalUrl ? 'noreferrer' : undefined}
-          className="entity__title"
-          aria-disabled={!externalUrl}
-        >
-          {title}
-        </a>
-        <p className="entity__subtitle">{subtitle}</p>
+    <li className="cd">
+      <div className="cd__case">
+        <div className="cd__sticker">#{rank}</div>
+        {image ? (
+          <Image
+            src={image}
+            alt=""
+            width={96}
+            height={96}
+            className="cd__art"
+            sizes="96px"
+          />
+        ) : (
+          <div className="cd__art cd__art--fallback">CD</div>
+        )}
+        <div className="cd__shine" />
+        <div className="cd__glare" />
       </div>
-      <div className="entity__metric">
-        <span>{metricLabel}</span>
-        <strong>{metricValue}</strong>
+      <div className="cd__info">
+        <div className="cd__title-row">
+          <a
+            href={externalUrl || '#'}
+            target={externalUrl ? '_blank' : undefined}
+            rel={externalUrl ? 'noreferrer' : undefined}
+            className="cd__title"
+            aria-disabled={!externalUrl}
+          >
+            {title}
+          </a>
+          {metricValue && (
+            <span className="cd__pill">
+              {metricLabel ? `${metricLabel}: ` : ''}
+              {metricValue}
+            </span>
+          )}
+        </div>
+        <p className="cd__subtitle">{subtitle}</p>
+        <div className="cd__liner">
+          <span className="cd__liner-label">Details</span>
+          <p className="cd__liner-copy">
+            {metricLabel && metricValue
+              ? `${metricLabel}: ${metricValue} • `
+              : ''}
+            {externalUrl ? 'Open in Spotify' : 'Spotify link unavailable'}
+          </p>
+        </div>
       </div>
     </li>
   );

@@ -191,7 +191,15 @@ NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://localhost:3000`}
         <section className="card card--center">
           {/* Customize this hero/login section or replace the button with your own call-to-action. */}
           <h2>Connect Spotify</h2>
-          <p className="muted">Log in to your Spotify account.</p>
+          <p className="muted">
+            Statify visualizes your personal listening universe with Y2K vibes.
+            Connect to pull your top artists, tracks, and recent plays.
+          </p>
+          <ul className="landing-points">
+            <li>Top tracks & artists by time range</li>
+            <li>Recently played snapshots with timestamps</li>
+            <li>Privacy first: tokens stay in your browser</li>
+          </ul>
           {authError && <p className="error">{authError}</p>}
           <button className="button" onClick={initiateSpotifyLogin}>
             Connect my account
@@ -258,6 +266,7 @@ NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://localhost:3000`}
             {/* Stats columns. Add/remove <StatsList> blocks to change the columns shown, or reorder them. */}
             <StatsList
               title="Top Tracks"
+              iconLabel="TRK"
               items={stats.topTracks}
               renderItem={(track, index) => (
                 <StatRow
@@ -274,6 +283,7 @@ NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://localhost:3000`}
             />
             <StatsList
               title="Top Artists"
+              iconLabel="ART"
               items={stats.topArtists}
               renderItem={(artist, index) => (
                 <StatRow
@@ -291,6 +301,7 @@ NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://localhost:3000`}
             />
             <StatsList
               title="Recently Played"
+              iconLabel="REC"
               items={stats.recentlyPlayed}
               renderItem={(item, index) => (
                 <StatRow

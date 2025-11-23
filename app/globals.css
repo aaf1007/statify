@@ -76,3 +76,44 @@ body::after {
   mix-blend-mode: screen;
   opacity: 0.28;
 }
+
+.vhs-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      rgba(255, 255, 255, 0.07),
+      rgba(255, 255, 255, 0.04) 2%,
+      rgba(0, 0, 0, 0) 4%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0.04) 2px,
+      rgba(0, 0, 0, 0) 3px,
+      rgba(0, 0, 0, 0) 6px
+    );
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: vhs-boot 1.4s ease-out;
+  z-index: 9999;
+}
+
+@keyframes vhs-boot {
+  0% {
+    opacity: 0.7;
+    transform: translateY(-8px);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  60% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
