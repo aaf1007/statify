@@ -1,10 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Orbitron:wght@500;700&display=swap');
+
 :root {
-  font-family: 'Inter', 'Space Grotesk', -apple-system, BlinkMacSystemFont,
-    'Segoe UI', sans-serif;
+  --bg: #03040b;
+  --bg-soft: rgba(8, 11, 24, 0.9);
+  --panel: rgba(12, 15, 29, 0.82);
+  --panel-edge: rgba(255, 255, 255, 0.1);
+  --accent: #87ff6a;
+  --accent-2: #5fd6ff;
+  --accent-3: #ff8de3;
+  --text: #ecf5ff;
+  --muted: #a7b4c7;
+  font-family: 'Space Grotesk', 'Orbitron', 'JetBrains Mono', -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.6;
   font-weight: 400;
-  color: #fdfdfd;
-  background-color: #121212;
+  color: var(--text);
+  background-color: var(--bg);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
@@ -18,11 +29,50 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at 20% 20%, #1c1c1c, #121212 55%, #000000);
+  background: radial-gradient(circle at 15% 20%, rgba(93, 255, 180, 0.12), transparent 35%),
+    radial-gradient(circle at 80% 10%, rgba(109, 220, 255, 0.15), transparent 30%),
+    radial-gradient(circle at 70% 65%, rgba(255, 141, 227, 0.12), transparent 32%),
+    linear-gradient(130deg, #05060f, #060710 35%, #02030a 70%, #090b14);
   color: inherit;
+  position: relative;
+  overflow-x: hidden;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.05),
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 1px,
+      transparent 22px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.04),
+      rgba(255, 255, 255, 0.04) 1px,
+      transparent 1px,
+      transparent 18px
+    );
+  mix-blend-mode: soft-light;
+  opacity: 0.18;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E");
+  mix-blend-mode: screen;
+  opacity: 0.28;
 }
