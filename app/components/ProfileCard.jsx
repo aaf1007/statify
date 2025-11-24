@@ -9,12 +9,25 @@ export default function ProfileCard({ profile, onLogout, followerLabel }) {
     <section className="card profile-card">
       <div className="profile">
         <ProfileAvatar profile={profile} />
-        <div>
+        <div className="profile__details">
           <p className="muted">Logged in as</p>
           <h2>{profile?.display_name}</h2>
-          <p className="muted">
-            Followers: {followerLabel}
-          </p>
+          <div className="profile__meta">
+            <div>
+              <p className="profile__meta-label">Email</p>
+              <p className="profile__meta-value">{profile?.email || 'Hidden'}</p>
+            </div>
+            <div>
+              <p className="profile__meta-label">Plan</p>
+              <p className="profile__meta-badge">
+                {profile?.product ? profile.product.toUpperCase() : 'N/A'}
+              </p>
+            </div>
+            <div>
+              <p className="profile__meta-label">Followers</p>
+              <p className="profile__meta-value">{followerLabel}</p>
+            </div>
+          </div>
         </div>
       </div>
       <button className="button button--ghost" onClick={onLogout}>

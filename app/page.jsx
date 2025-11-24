@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import ProfileCard from './components/ProfileCard';
 import StatRow from './components/StatRow';
 import StatsList from './components/StatsList';
+import MetricHighlights from './components/MetricHighlights';
+import InsightsPanel from './components/InsightsPanel';
 import {
   clearSpotifySession,
   exchangeCodeForToken,
@@ -14,6 +16,7 @@ import {
   hasSpotifyConfig,
   initiateSpotifyLogin,
   ensureAccessToken,
+  createPlaylistWithTracks,
 } from '../lib/spotify';
 
 const TIME_RANGES = [
@@ -67,6 +70,9 @@ function DashboardPage() {
   const [selectedLimit, setSelectedLimit] = useState(10);
   const [statsError, setStatsError] = useState('');
   const [loadingStats, setLoadingStats] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [playlistCreating, setPlaylistCreating] = useState(false);
+  const [playlistFeedback, setPlaylistFeedback] = useState(null);
   const [stats, setStats] = useState({
     topArtists: [],
     topTracks: [],
@@ -134,6 +140,7 @@ function DashboardPage() {
           topTracks: tracks.items,
           recentlyPlayed: recent.items,
         });
+        setLastUpdated(new Date());
       } catch (error) {
         setStatsError(error.message);
       } finally {
@@ -155,6 +162,237 @@ function DashboardPage() {
     clearSpotifySession();
     router.replace('/');
   }, [router]);
+
+  const selectedRangeLabel = useMemo(() => {
+    return (
+      TIME_RANGES.find((range) => range.id === selectedRange)?.label ||
+      'Custom window'
+    );
+  }, [selectedRange]);
+
+  const summaryMetrics = useMemo(() => {
+    if (
+      !stats.topTracks.length &&
+      !stats.topArtists.length &&
+      !stats.recentlyPlayed.length
+    ) {
+      return [];
+    }
+
+    const topTrack = stats.topTracks[0];
+    const topArtist = stats.topArtists[0];
+    const averagePopularity = stats.topTracks.length
+      ? Math.round(
+          stats.topTracks.reduce(
+            (total, track) => total + (track.popularity || 0),
+            0
+          ) / stats.topTracks.length
+        )
+      : null;
+    const totalRecentMinutes = stats.recentlyPlayed.length
+      ? Math.round(
+          stats.recentlyPlayed.reduce(
+            (total, item) => total + (item.track?.duration_ms || 0),
+            0
+          ) / 60000
+        )
+      : null;
+
+    return [
+      {
+        key: 'top-track',
+        label: 'Top Track',
+        value: topTrack?.name || 'Awaiting data',
+        meta: topTrack
+          ? topTrack.artists.map((artist) => artist.name).join(', ')
+          : 'Connect and refresh to populate',
+        icon: 'TRK',
+      },
+      {
+        key: 'top-artist',
+        label: 'Top Artist',
+        value: topArtist?.name || 'Awaiting data',
+        meta: topArtist
+          ? `${numberFormatter.format(topArtist.followers?.total || 0)} followers`
+          : 'Pulled from your Spotify profile',
+        icon: 'ART',
+      },
+      {
+        key: 'avg-popularity',
+        label: 'Avg. Popularity',
+        value: averagePopularity ? `${averagePopularity} / 100` : 'No data',
+        meta: stats.topTracks.length
+          ? `Across ${stats.topTracks.length} tracks`
+          : 'Fetch a time range to calculate',
+        icon: 'AVG',
+      },
+      {
+        key: 'recent-minutes',
+        label: 'Recent Minutes',
+        value: totalRecentMinutes ? `${totalRecentMinutes} min` : 'Pending',
+        meta: stats.recentlyPlayed.length
+          ? `From last ${stats.recentlyPlayed.length} plays`
+          : 'Listening history will appear here',
+        icon: 'REC',
+      },
+    ];
+  }, [stats]);
+
+  const insights = useMemo(() => {
+    if (
+      !stats.topTracks.length &&
+      !stats.topArtists.length &&
+      !stats.recentlyPlayed.length
+    ) {
+      return [];
+    }
+
+    const topArtist = stats.topArtists[0];
+    const recentPlay = stats.recentlyPlayed[0];
+    const averagePopularity = stats.topTracks.length
+      ? Math.round(
+          stats.topTracks.reduce(
+            (total, track) => total + (track.popularity || 0),
+            0
+          ) / stats.topTracks.length
+        )
+      : null;
+    const uniqueArtists = new Set(
+      stats.topTracks.flatMap((track) =>
+        track.artists?.map((artist) => artist.name)
+      )
+    ).size;
+    const coveragePercent = selectedLimit
+      ? Math.min(100, Math.round((uniqueArtists / selectedLimit) * 100))
+      : null;
+
+    const genreCount = {};
+    stats.topArtists.forEach((artist) => {
+      (artist.genres || []).forEach((genre) => {
+        genreCount[genre] = (genreCount[genre] || 0) + 1;
+      });
+    });
+    const topGenreEntry = Object.entries(genreCount).sort(
+      (a, b) => b[1] - a[1]
+    )[0];
+    const topGenre = topGenreEntry
+      ? capitalizeWords(topGenreEntry[0])
+      : null;
+    const rangeLabel = selectedRangeLabel || 'Custom window';
+
+    return [
+      {
+        title: 'Engagement cadence',
+        description: recentPlay
+          ? `Last played ${formatRelativeTime(recentPlay.played_at)} — ${
+              recentPlay.track?.name
+            }`
+          : 'No recent playback captured in this window.',
+      },
+      {
+        title: 'Audience reach',
+        description: topArtist
+          ? `${topArtist.name} anchors your audience with ${numberFormatter.format(
+              topArtist.followers?.total || 0
+            )} followers.`
+          : 'Connect to surface your leading artists.',
+      },
+      {
+        title: 'Genre gravity',
+        description: topGenre
+          ? `Current listening leans toward ${topGenre}.`
+          : 'Listening genres will populate as your artists load.',
+        progress: coveragePercent ?? 0,
+        meta: `${uniqueArtists} unique artists across your ${rangeLabel.toLowerCase()}`,
+      },
+      {
+        title: 'Energy profile',
+        description: averagePopularity
+          ? `Average popularity sits at ${averagePopularity}/100. Keep exploring to move the needle.`
+          : 'Fetch a time range to compute popularity.',
+      },
+    ];
+  }, [selectedLimit, selectedRangeLabel, stats]);
+
+  const handleRefresh = useCallback(() => {
+    loadStats(selectedRange, selectedLimit);
+  }, [loadStats, selectedLimit, selectedRange]);
+
+  const handleCreatePlaylist = useCallback(async () => {
+    if (!profile?.id || !stats.topTracks.length || playlistCreating) return;
+    setPlaylistCreating(true);
+    setPlaylistFeedback(null);
+    try {
+      const trackUris = stats.topTracks
+        .map((track) => track.uri)
+        .filter(Boolean);
+
+      if (!trackUris.length) {
+        throw new Error('No Spotify track URIs available for playlist.');
+      }
+
+      const rangeLabel = selectedRangeLabel || 'Custom window';
+      const playlistName = `Statify • ${rangeLabel}`;
+      const playlistDescription = `Auto-generated via Statify for your ${rangeLabel.toLowerCase()}.`;
+
+      const playlist = await createPlaylistWithTracks(profile.id, {
+        name: playlistName,
+        description: playlistDescription,
+        trackUris,
+      });
+
+      setPlaylistFeedback({
+        status: 'success',
+        message: 'Playlist synced to Spotify.',
+        url: playlist?.external_urls?.spotify,
+        name: playlist?.name,
+      });
+    } catch (error) {
+      setPlaylistFeedback({
+        status: 'error',
+        message: error.message || 'Playlist creation failed.',
+      });
+    } finally {
+      setPlaylistCreating(false);
+    }
+  }, [
+    playlistCreating,
+    profile?.id,
+    selectedRangeLabel,
+    stats.topTracks,
+  ]);
+
+  const headerStatus = useMemo(() => {
+    switch (status) {
+      case 'ready':
+        return {
+          label: 'Spotify Connected',
+          tone: 'is-online',
+          subline: profile?.email
+            ? `Signed in as ${profile.email}`
+            : 'Secure OAuth session active',
+        };
+      case 'checking-session':
+        return {
+          label: 'Validating Session',
+          tone: 'is-syncing',
+          subline: 'Ensuring access token freshness',
+        };
+      case 'missing-config':
+        return {
+          label: 'Configuration Required',
+          tone: 'is-alert',
+          subline: 'Add your Spotify client credentials',
+        };
+      case 'needs-login':
+      default:
+        return {
+          label: 'Sign In Required',
+          tone: 'is-alert',
+          subline: 'Connect Spotify to unlock analytics',
+        };
+    }
+  }, [profile?.email, status]);
 
   const renderContent = useMemo(() => {
     // The UI below is grouped by auth state. Rearrange or add sections to change the layout for each state.
@@ -218,106 +456,179 @@ NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://localhost:3000`}
             onLogout={handleLogout}
           />
 
-          <section className="card">
+          <section className="card command-center">
             {/* Filter bar. Add new toggles or controls here to change data queries or layout behavior. */}
-            <div className="section-header">
+            <div className="command-center__intro">
               <div>
-                <p className="muted">Time range</p>
-                <h3>Stats</h3>
-              </div>
-              <div className="range-toggle">
-                {TIME_RANGES.map((range) => (
-                  <button
-                    key={range.id}
-                    className={
-                      range.id === selectedRange
-                        ? 'range-toggle__button is-active'
-                        : 'range-toggle__button'
-                    }
-                    onClick={() => setSelectedRange(range.id)}
-                  >
-                    {range.label}
-                  </button>
-                ))}
-              </div>
-              <div className="limit-toggle">
-                {ITEM_LIMITS.map((limit) => (
-                  <button
-                    key={limit.id}
-                    className={
-                      limit.id === selectedLimit
-                        ? 'limit-toggle__button is-active'
-                        : 'limit-toggle__button'
-                    }
-                    onClick={() => setSelectedLimit(limit.id)}
-                  >
-                    {limit.label}
-                  </button>
-                ))}
+                <p className="muted">Engagement window</p>
+                <h3>Controls</h3>
               </div>
             </div>
+            <div className="command-center__filters">
+              <div>
+                <p className="muted">Time range</p>
+                <div className="range-toggle">
+                  {TIME_RANGES.map((range) => (
+                    <button
+                      key={range.id}
+                      className={
+                        range.id === selectedRange
+                          ? 'range-toggle__button is-active'
+                          : 'range-toggle__button'
+                      }
+                      onClick={() => setSelectedRange(range.id)}
+                    >
+                      {range.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="muted">Result depth</p>
+                <div className="limit-toggle">
+                  {ITEM_LIMITS.map((limit) => (
+                    <button
+                      key={limit.id}
+                      className={
+                        limit.id === selectedLimit
+                          ? 'limit-toggle__button is-active'
+                          : 'limit-toggle__button'
+                      }
+                      onClick={() => setSelectedLimit(limit.id)}
+                    >
+                      {limit.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="command-center__status">
+              <span
+                className={`status-chip ${
+                  loadingStats ? 'is-syncing' : 'is-online'
+                }`}
+              >
+                {loadingStats ? 'Refreshing data' : 'Data up to date'}
+              </span>
+              <p className="muted">
+                {lastUpdated
+                  ? `Last sync ${formatTimestamp(lastUpdated)}`
+                  : 'Waiting for first sync'}
+              </p>
+              <button
+                className="button button--ghost command-center__refresh"
+                onClick={handleRefresh}
+                disabled={loadingStats}
+              >
+                Refresh insights
+              </button>
+              <button
+                className="button command-center__playlist"
+                onClick={handleCreatePlaylist}
+                disabled={playlistCreating || !stats.topTracks.length}
+              >
+                {playlistCreating ? 'Syncing…' : 'Save as playlist'}
+              </button>
+            </div>
             {loadingStats && (
-              <p className="muted">Fetching fresh insights…</p>
+              <p className="muted muted--inline">Fetching fresh insights…</p>
             )}
             {statsError && <p className="error">{statsError}</p>}
+            {playlistFeedback && (
+              <p
+                className={`playlist-feedback ${
+                  playlistFeedback.status === 'error' ? 'is-error' : 'is-success'
+                }`}
+              >
+                {playlistFeedback.message}
+                {playlistFeedback.name && ` — ${playlistFeedback.name}`}
+                {playlistFeedback.url && (
+                  <>
+                    {' '}
+                    <a
+                      href={playlistFeedback.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open on Spotify
+                    </a>
+                  </>
+                )}
+              </p>
+            )}
           </section>
 
-          <section className="grid">
-            {/* Stats columns. Add/remove <StatsList> blocks to change the columns shown, or reorder them. */}
-            <StatsList
-              title="Top Tracks"
-              iconLabel="TRK"
-              items={stats.topTracks}
-              renderItem={(track, index) => (
-                <StatRow
-                  key={track.id}
-                  rank={index + 1}
-                  image={track.album?.images?.[2]?.url}
-                  title={track.name}
-                  subtitle={`${track.artists.map((artist) => artist.name).join(', ')} • ${
-                    track.album?.name
-                  }`}
-                  externalUrl={track.external_urls?.spotify}
-                />
-              )}
-            />
-            <StatsList
-              title="Top Artists"
-              iconLabel="ART"
-              items={stats.topArtists}
-              renderItem={(artist, index) => (
-                <StatRow
-                  key={artist.id}
-                  rank={index + 1}
-                  image={artist.images?.[2]?.url}
-                  title={artist.name}
-                  metricLabel="Followers"
-                  metricValue={numberFormatter.format(
-                    artist.followers?.total || 0
+          {!!summaryMetrics.length && (
+            <MetricHighlights metrics={summaryMetrics} />
+          )}
+
+          <section className="mosaic">
+            <div className="mosaic__primary">
+              <div className="mosaic__row">
+                {/* Stats columns. Add/remove <StatsList> blocks to change the columns shown, or reorder them. */}
+                <StatsList
+                  title="Top Tracks"
+                  iconLabel="TRK"
+                  items={stats.topTracks}
+                  renderItem={(track, index) => (
+                    <StatRow
+                      key={track.id}
+                      rank={index + 1}
+                      image={track.album?.images?.[2]?.url}
+                      title={track.name}
+                      subtitle={`${track.artists
+                        .map((artist) => artist.name)
+                        .join(', ')} • ${track.album?.name}`}
+                      metricLabel="Popularity"
+                      metricValue={
+                        typeof track.popularity === 'number'
+                          ? `${track.popularity}/100`
+                          : null
+                      }
+                      externalUrl={track.external_urls?.spotify}
+                    />
                   )}
-                  externalUrl={artist.external_urls?.spotify}
                 />
-              )}
-            />
-            <StatsList
-              title="Recently Played"
-              iconLabel="REC"
-              items={stats.recentlyPlayed}
-              renderItem={(item, index) => (
-                <StatRow
-                  key={`${item.played_at}-${item.track.id}`}
-                  rank={index + 1}
-                  image={item.track.album?.images?.[2]?.url}
-                  title={item.track.name}
-                  subtitle={`${item.track.artists
-                    .map((artist) => artist.name)
-                    .join(', ')} • ${item.track.album?.name}`}
-                  metricLabel="Played"
-                  metricValue={formatRelativeTime(item.played_at)}
-                  externalUrl={item.track.external_urls?.spotify}
+                <StatsList
+                  title="Top Artists"
+                  iconLabel="ART"
+                  items={stats.topArtists}
+                  renderItem={(artist, index) => (
+                    <StatRow
+                      key={artist.id}
+                      rank={index + 1}
+                      image={artist.images?.[2]?.url}
+                      title={artist.name}
+                      metricLabel="Followers"
+                      metricValue={numberFormatter.format(
+                        artist.followers?.total || 0
+                      )}
+                      externalUrl={artist.external_urls?.spotify}
+                    />
+                  )}
                 />
-              )}
-            />
+              </div>
+              <StatsList
+                title="Recently Played"
+                iconLabel="REC"
+                items={stats.recentlyPlayed}
+                renderItem={(item, index) => (
+                  <StatRow
+                    key={`${item.played_at}-${item.track.id}`}
+                    rank={index + 1}
+                    image={item.track.album?.images?.[2]?.url}
+                    title={item.track.name}
+                    subtitle={`${item.track.artists
+                      .map((artist) => artist.name)
+                      .join(', ')} • ${item.track.album?.name}`}
+                    metricLabel="Played"
+                    metricValue={formatRelativeTime(item.played_at)}
+                    externalUrl={item.track.external_urls?.spotify}
+                  />
+                )}
+              />
+            </div>
+            <InsightsPanel insights={insights} loading={loadingStats} />
           </section>
         </>
       );
@@ -328,22 +639,38 @@ NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://localhost:3000`}
     authError,
     configReady,
     handleLogout,
+    handleRefresh,
+    insights,
+    lastUpdated,
     profile,
     selectedRange,
     selectedLimit,
     stats,
     statsError,
+    summaryMetrics,
     status,
     loadingStats,
+    playlistCreating,
+    playlistFeedback,
+    handleCreatePlaylist,
   ]);
 
   return (
     <div className="app">
       {/* Page shell: adjust header/main markup or class names to change global spacing/columns. */}
       <header className="app__header">
-        <div>
-          <p className="muted">Spotify Data Results</p>
-          <h1>Personal Stats</h1>
+        <div className="app__brand">
+          <div className="app__brand-orb" aria-hidden />
+          <div>
+            <p className="muted">Statify Command Center</p>
+            <h1>Listening Intelligence</h1>
+          </div>
+        </div>
+        <div className="app__header-meta">
+          <span className={`status-chip ${headerStatus.tone}`}>
+            {headerStatus.label}
+          </span>
+          <p className="muted">{headerStatus.subline}</p>
         </div>
       </header>
       <main className="app__content">{renderContent}</main>
@@ -360,4 +687,23 @@ function formatRelativeTime(dateString) {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function formatTimestamp(date) {
+  if (!date) return '';
+  return new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+
+function capitalizeWords(value = '') {
+  return value
+    .split(' ')
+    .map((word) =>
+      word ? word.charAt(0).toUpperCase() + word.slice(1) : word
+    )
+    .join(' ');
 }
