@@ -30,3 +30,5 @@ DEPLOYMENT_NOTES.md
 # .envfiles
 .env.local
 .env.example
+
+/claude

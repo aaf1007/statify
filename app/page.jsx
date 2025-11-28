@@ -1,24 +1,25 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Heart, Music } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import ProfileCard from './components/ProfileCard';
-import StatRow from './components/StatRow';
-import StatsList from './components/StatsList';
-import MetricHighlights from './components/MetricHighlights';
-import InsightsPanel from './components/InsightsPanel';
-import { Heart, Sparkles, Star } from 'lucide-react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   clearSpotifySession,
+  createPlaylistWithTracks,
+  ensureAccessToken,
   exchangeCodeForToken,
   fetchProfile,
   fetchRecentlyPlayed,
   fetchTopItems,
   hasSpotifyConfig,
   initiateSpotifyLogin,
-  ensureAccessToken,
-  createPlaylistWithTracks,
 } from '../lib/spotify';
+import InsightsPanel from './components/InsightsPanel';
+import MetricHighlights from './components/MetricHighlights';
+import ProfileCard from './components/ProfileCard';
+import StatRow from './components/StatRow';
+import StatsList from './components/StatsList';
 
 const TIME_RANGES = [
   { id: 'short_term', label: 'Last 4 Weeks' },
@@ -42,11 +43,21 @@ export default function HomePage() {
   return (
     <Suspense
       fallback={
-        <div className="app">
+        <div className="app retro-shell">
           <main className="app__content">
-            <section className="card card--center">
-              <div className="loader" aria-hidden />
-              <p>Loading your dashboard…</p>
+            <section className="retro-window retro-panel retro-panel--center">
+              <div className="retro-titlebar">
+                <span>statify.exe</span>
+                <div className="retro-titlebar__actions">
+                  <span>_</span>
+                  <span>□</span>
+                  <span>×</span>
+                </div>
+              </div>
+              <div className="retro-panel__body">
+                <div className="loader" aria-hidden />
+                <p>Loading your dashboard…</p>
+              </div>
             </section>
           </main>
         </div>
@@ -420,11 +431,10 @@ function DashboardPage() {
 
     if (status === 'needs-login') {
       return {
-        title: 'Plug into Spotify',
+        title: 'Statify',
         description:
           'Authorize Statify to spin up your personal listening zine with playlists, stats, and recent spins.',
         badges: ['Scopes: playlists + stats', 'Tokens live in your browser'],
-        footnote: 'No backend storage — everything stays local.',
         errorMessage: loginErrorMessage,
         showLoginButton: true,
       };
@@ -452,7 +462,7 @@ function DashboardPage() {
   }, [configReady, lastUpdated, loginErrorMessage, profile?.display_name, selectedRangeLabel, status]);
 
   const heroBadges = heroContent.badges?.length ? (
-    <div className="y2k-hero__badges">
+    <div className="retro-hero__badges">
       {heroContent.badges.map((badge) => (
         <span key={badge} className="pixel-pill">
           {badge}
@@ -462,45 +472,64 @@ function DashboardPage() {
   ) : null;
 
   const heroFootnote = heroContent.footnote ? (
-    <p className="y2k-hero__footnote muted">{heroContent.footnote}</p>
+    <p className="retro-hero__footnote muted">{heroContent.footnote}</p>
   ) : null;
 
   const heroAction = heroContent.showLoginButton ? (
-    <button className="button y2k-hero__cta" onClick={initiateSpotifyLogin}>
+    <button
+      className="retro-button retro-button--primary"
+      onClick={initiateSpotifyLogin}
+    >
       Connect Spotify
     </button>
   ) : null;
 
   const heroError = heroContent.errorMessage ? (
-    <p className="y2k-hero__error error">{heroContent.errorMessage}</p>
+    <p className="retro-hero__error error">{heroContent.errorMessage}</p>
   ) : null;
 
   const renderContent = useMemo(() => {
-    // The UI below is grouped by auth state. Rearrange or add sections to change the layout for each state.
     if (!configReady) {
       return (
-        <section className="card">
-          {/* Change this panel to adjust the pre-auth instructions layout. Swap the <pre> for your own component if desired. */}
-          <h2>Finish the setup</h2>
-          <p>
-            Add your Spotify App credentials to a <code>.env.local</code> file:
-          </p>
-          <pre className="code-block">
-            {`NEXT_PUBLIC_SPOTIFY_CLIENT_ID=your_client_id
+        <section className="retro-window retro-panel">
+          <div className="retro-titlebar">
+            <span>statify.ini</span>
+            <div className="retro-titlebar__actions">
+              <span>_</span>
+              <span>□</span>
+              <span>×</span>
+            </div>
+          </div>
+          <div className="retro-panel__body">
+            <h2>Finish configuration</h2>
+            <p>Drop your Spotify Client ID and redirect URI into</p>
+            <pre className="code-block">
+{`NEXT_PUBLIC_SPOTIFY_CLIENT_ID=your_client_id
 NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://localhost:3000`}
-          </pre>
-          <p className="muted">
-            Use the same redirect URI here and in your Spotify dashboard.
-          </p>
+            </pre>
+            <p className="muted">
+              The redirect value must match the Spotify dashboard entry.
+            </p>
+          </div>
         </section>
       );
     }
 
     if (status === 'checking-session') {
       return (
-        <section className="card card--center">
-          <div className="loader" aria-hidden />
-          <p>Validating your Spotify session…</p>
+        <section className="retro-window retro-panel retro-panel--center">
+          <div className="retro-titlebar">
+            <span>security.dll</span>
+            <div className="retro-titlebar__actions">
+              <span>_</span>
+              <span>□</span>
+              <span>×</span>
+            </div>
+          </div>
+          <div className="retro-panel__body">
+            <div className="loader" aria-hidden />
+            <p>Validating your Spotify session…</p>
+          </div>
         </section>
       );
     }
@@ -511,189 +540,211 @@ NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://localhost:3000`}
 
     if (status === 'ready') {
       return (
-        <>
-          {/* Profile header. To move it elsewhere, lift this component or swap the surrounding fragment order. */}
-          <ProfileCard
-            profile={profile}
-            followerLabel={numberFormatter.format(profile?.followers?.total || 0)}
-            onLogout={handleLogout}
-          />
+        <div className="retro-desktop">
+          <div className="retro-desktop__col">
+            <ProfileCard
+              profile={profile}
+              followerLabel={numberFormatter.format(
+                profile?.followers?.total || 0
+              )}
+              onLogout={handleLogout}
+            />
 
-          <section className="card command-center">
-            {/* Filter bar. Add new toggles or controls here to change data queries or layout behavior. */}
-            <div className="command-center__intro">
-              <div>
-                <p className="muted">Engagement window</p>
-                <h3>Controls</h3>
-              </div>
-            </div>
-            <div className="command-center__filters">
-              <div>
-                <p className="muted">Time range</p>
-                <div className="range-toggle">
-                  {TIME_RANGES.map((range) => (
-                    <button
-                      key={range.id}
-                      className={
-                        range.id === selectedRange
-                          ? 'range-toggle__button is-active'
-                          : 'range-toggle__button'
-                      }
-                      onClick={() => setSelectedRange(range.id)}
-                    >
-                      {range.label}
-                    </button>
-                  ))}
+            <section className="retro-window command-center">
+              <div className="retro-titlebar">
+                <span>Control Panel</span>
+                <div className="retro-titlebar__actions">
+                  <span>_</span>
+                  <span>□</span>
+                  <span>×</span>
                 </div>
               </div>
-              <div>
-                <p className="muted">Result depth</p>
-                <div className="limit-toggle">
-                  {ITEM_LIMITS.map((limit) => (
-                    <button
-                      key={limit.id}
-                      className={
-                        limit.id === selectedLimit
-                          ? 'limit-toggle__button is-active'
-                          : 'limit-toggle__button'
-                      }
-                      onClick={() => setSelectedLimit(limit.id)}
-                    >
-                      {limit.label}
-                    </button>
-                  ))}
+              <div className="command-center__body">
+                <div className="command-center__intro">
+                  <div>
+                    <p className="muted">Engagement window</p>
+                    <h3>Controls</h3>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <div className="command-center__status">
-              <span
-                className={`status-chip ${
-                  loadingStats ? 'is-syncing' : 'is-online'
-                }`}
-              >
-                {loadingStats ? 'Refreshing data' : 'Data up to date'}
-              </span>
-              <p className="muted">
-                {lastUpdated
-                  ? `Last sync ${formatTimestamp(lastUpdated)}`
-                  : 'Waiting for first sync'}
-              </p>
-              <button
-                className="button button--ghost command-center__refresh"
-                onClick={handleRefresh}
-                disabled={loadingStats}
-              >
-                Refresh insights
-              </button>
-              <button
-                className="button command-center__playlist"
-                onClick={handleCreatePlaylist}
-                disabled={playlistCreating || !stats.topTracks.length}
-              >
-                {playlistCreating ? 'Syncing…' : 'Save as playlist'}
-              </button>
-            </div>
-            {loadingStats && (
-              <p className="muted muted--inline">Fetching fresh insights…</p>
-            )}
-            {statsError && <p className="error">{statsError}</p>}
-            {playlistFeedback && (
-              <p
-                className={`playlist-feedback ${
-                  playlistFeedback.status === 'error' ? 'is-error' : 'is-success'
-                }`}
-              >
-                {playlistFeedback.message}
-                {playlistFeedback.name && ` — ${playlistFeedback.name}`}
-                {playlistFeedback.url && (
-                  <>
-                    {' '}
-                    <a
-                      href={playlistFeedback.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Open on Spotify
-                    </a>
-                  </>
+                <div className="command-center__filters">
+                  <div>
+                    <p className="muted">Time range</p>
+                    <div className="range-toggle">
+                      {TIME_RANGES.map((range) => (
+                        <button
+                          key={range.id}
+                          className={
+                            range.id === selectedRange
+                              ? 'range-toggle__button is-active'
+                              : 'range-toggle__button'
+                          }
+                          onClick={() => setSelectedRange(range.id)}
+                        >
+                          {range.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="muted">Result depth</p>
+                    <div className="limit-toggle">
+                      {ITEM_LIMITS.map((limit) => (
+                        <button
+                          key={limit.id}
+                          className={
+                            limit.id === selectedLimit
+                              ? 'limit-toggle__button is-active'
+                              : 'limit-toggle__button'
+                          }
+                          onClick={() => setSelectedLimit(limit.id)}
+                        >
+                          {limit.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="command-center__status">
+                  <span
+                    className={`status-chip ${
+                      loadingStats ? 'is-syncing' : 'is-online'
+                    }`}
+                  >
+                    {loadingStats ? 'Refreshing data' : 'Data up to date'}
+                  </span>
+                  <p className="muted">
+                    {lastUpdated
+                      ? `Last sync ${formatTimestamp(lastUpdated)}`
+                      : 'Waiting for first sync'}
+                  </p>
+                  <button
+                    className="retro-button retro-button--ghost command-center__refresh"
+                    onClick={handleRefresh}
+                    disabled={loadingStats}
+                  >
+                    Refresh insights
+                  </button>
+                  <button
+                    className="retro-button retro-button--primary command-center__playlist"
+                    onClick={handleCreatePlaylist}
+                    disabled={playlistCreating || !stats.topTracks.length}
+                  >
+                    {playlistCreating ? 'Syncing…' : 'Save as playlist'}
+                  </button>
+                </div>
+                {loadingStats && (
+                  <p className="muted muted--inline">Fetching fresh insights…</p>
                 )}
-              </p>
-            )}
-          </section>
-
-          {!!summaryMetrics.length && (
-            <MetricHighlights metrics={summaryMetrics} />
-          )}
-
-          <section className="mosaic">
-            <div className="mosaic__primary">
-              <div className="mosaic__row">
-                {/* Stats columns. Add/remove <StatsList> blocks to change the columns shown, or reorder them. */}
-                <StatsList
-                  title="Top Tracks"
-                  iconLabel="TRK"
-                  items={stats.topTracks}
-                  renderItem={(track, index) => (
-                    <StatRow
-                      key={track.id}
-                      rank={index + 1}
-                      image={track.album?.images?.[2]?.url}
-                      title={track.name}
-                      subtitle={`${track.artists
-                        .map((artist) => artist.name)
-                        .join(', ')} • ${track.album?.name}`}
-                      metricLabel="Popularity"
-                      metricValue={
-                        typeof track.popularity === 'number'
-                          ? `${track.popularity}/100`
-                          : null
-                      }
-                      externalUrl={track.external_urls?.spotify}
-                    />
-                  )}
-                />
-                <StatsList
-                  title="Top Artists"
-                  iconLabel="ART"
-                  items={stats.topArtists}
-                  renderItem={(artist, index) => (
-                    <StatRow
-                      key={artist.id}
-                      rank={index + 1}
-                      image={artist.images?.[2]?.url}
-                      title={artist.name}
-                      metricLabel="Followers"
-                      metricValue={numberFormatter.format(
-                        artist.followers?.total || 0
-                      )}
-                      externalUrl={artist.external_urls?.spotify}
-                    />
-                  )}
-                />
+                {statsError && <p className="error">{statsError}</p>}
+                {playlistFeedback && (
+                  <p
+                    className={`playlist-feedback ${
+                      playlistFeedback.status === 'error'
+                        ? 'is-error'
+                        : 'is-success'
+                    }`}
+                  >
+                    {playlistFeedback.message}
+                    {playlistFeedback.name && ` — ${playlistFeedback.name}`}
+                    {playlistFeedback.url && (
+                      <>
+                        {' '}
+                        <a
+                          href={playlistFeedback.url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open on Spotify
+                        </a>
+                      </>
+                    )}
+                  </p>
+                )}
               </div>
+            </section>
+
+            {!!summaryMetrics.length && (
+              <MetricHighlights metrics={summaryMetrics} />
+            )}
+
+            <div className="stats-columns">
               <StatsList
-                title="Recently Played"
-                iconLabel="REC"
-                items={stats.recentlyPlayed}
-                renderItem={(item, index) => (
+                title="Top Tracks"
+                iconLabel="CD"
+                items={stats.topTracks}
+                renderItem={(track, index) => (
                   <StatRow
-                    key={`${item.played_at}-${item.track.id}`}
+                    key={track.id}
                     rank={index + 1}
-                    image={item.track.album?.images?.[2]?.url}
-                    title={item.track.name}
-                    subtitle={`${item.track.artists
+                    image={track.album?.images?.[2]?.url}
+                    primaryLabel="Artist"
+                    primaryValue={track.artists
                       .map((artist) => artist.name)
-                      .join(', ')} • ${item.track.album?.name}`}
-                    metricLabel="Played"
-                    metricValue={formatRelativeTime(item.played_at)}
-                    externalUrl={item.track.external_urls?.spotify}
+                      .join(', ')}
+                    secondaryLabel="Track"
+                    secondaryValue={track.name}
+                    metaLabel="Album"
+                    metaValue={track.album?.name}
+                    progressValue={
+                      typeof track.popularity === 'number'
+                        ? track.popularity
+                        : null
+                    }
+                    externalUrl={track.external_urls?.spotify}
+                  />
+                )}
+              />
+              <StatsList
+                title="Top Artists"
+                iconLabel="FM"
+                items={stats.topArtists}
+                renderItem={(artist, index) => (
+                  <StatRow
+                    key={artist.id}
+                    rank={index + 1}
+                    image={artist.images?.[2]?.url}
+                    primaryLabel="Artist"
+                    primaryValue={artist.name}
+                    secondaryLabel="Followers"
+                    secondaryValue={numberFormatter.format(
+                      artist.followers?.total || 0
+                    )}
+                    metaLabel="Genres"
+                    metaValue={artist.genres?.slice(0, 2).join(', ') || '—'}
+                    progressValue={
+                      typeof artist.popularity === 'number'
+                        ? artist.popularity
+                        : null
+                    }
+                    externalUrl={artist.external_urls?.spotify}
                   />
                 )}
               />
             </div>
-            <InsightsPanel insights={insights} loading={loadingStats} />
-          </section>
-        </>
+            <StatsList
+              title="Recently Played"
+              iconLabel="REC"
+              items={stats.recentlyPlayed}
+              renderItem={(item, index) => (
+                <StatRow
+                  key={`${item.played_at}-${item.track.id}`}
+                  rank={index + 1}
+                  image={item.track.album?.images?.[2]?.url}
+                  primaryLabel="Artist"
+                  primaryValue={item.track.artists
+                    .map((artist) => artist.name)
+                    .join(', ')}
+                  secondaryLabel="Track"
+                  secondaryValue={item.track.name}
+                  metaLabel="Played"
+                  metaValue={formatRelativeTime(item.played_at)}
+                  externalUrl={item.track.external_urls?.spotify}
+                />
+              )}
+            />
+          </div>
+          <InsightsPanel insights={insights} loading={loadingStats} />
+        </div>
       );
     }
 
@@ -718,43 +769,25 @@ NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://localhost:3000`}
   ]);
 
   return (
-    <div className="app y2k-shell">
-      <div className="y2k-floating y2k-floating--1" aria-hidden>
-        <Heart className="y2k-floating__icon" />
-      </div>
-      <div className="y2k-floating y2k-floating--2" aria-hidden>
-        <Star className="y2k-floating__icon" />
-      </div>
-      <div className="y2k-floating y2k-floating--3" aria-hidden>
-        <Sparkles className="y2k-floating__icon" />
-      </div>
-      <div className="y2k-floating y2k-floating--4" aria-hidden>
-        <Heart className="y2k-floating__icon" />
-      </div>
-
-      <section className="card y2k-hero pink-gingham scanlines crt-noise">
-        <div className="myspace-title-bar y2k-hero__bar">
-          <div className="y2k-hero__label">
-            <Sparkles className="y2k-hero__label-icon" />
-            <span>My Listening Profile</span>
-          </div>
-          <div className="y2k-hero__window">
+    <div className="app retro-shell">
+      <section className="retro-window retro-hero">
+        <div className="retro-titlebar">
+          <span>Statify.exe</span>
+          <div className="retro-titlebar__actions">
             <span>_</span>
             <span>□</span>
             <span>×</span>
           </div>
         </div>
-        <div className="y2k-hero__body">
-          <div className="y2k-hero__hearts">
-            <Heart className="y2k-hero__heart" />
-            <Heart className="y2k-hero__heart" />
-            <Heart className="y2k-hero__heart" />
+        <div className="retro-hero__body">
+          <div className="retro-hero__stamp" aria-hidden>
+            <Heart />
           </div>
-          <h1 className="y2k-hero__title">{heroContent.title}</h1>
-          <p className="y2k-hero__desc">{heroContent.description}</p>
+          <h1 className="retro-hero__title">{heroContent.title}</h1>
+          <p className="retro-hero__desc">{heroContent.description}</p>
           {heroBadges}
           {heroAction}
-          <div className="y2k-hero__status">
+          <div className="retro-status">
             <span className={`status-chip ${headerStatus.tone}`}>
               {headerStatus.label}
             </span>
@@ -765,14 +798,36 @@ NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://localhost:3000`}
         </div>
       </section>
 
-      <div className="y2k-marquee">
-        <div className="y2k-marquee__track">
+      <div className="retro-marquee">
+        <div className="retro-marquee__track">
           ★ Spotify data stories ★ Export playlists ★ Explore top artists ★ Monitor recently played ★
           Spotify data stories ★ Export playlists ★ Explore top artists ★ Monitor recently played ★
         </div>
       </div>
 
       <main className="app__content">{renderContent}</main>
+
+      <footer className="retro-taskbar">
+        <button className="retro-taskbar__start" type="button">
+          <span className="retro-taskbar__orb" aria-hidden />
+          Start
+        </button>
+        <div className="retro-taskbar__meta">
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+          <a
+            href="https://www.spotify.com/account/apps/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Manage Access
+          </a>
+        </div>
+        <div className="retro-taskbar__clock">
+          <Music size={14} />
+          <span>Powered by Spotify Web API</span>
+        </div>
+      </footer>
     </div>
   );
 }

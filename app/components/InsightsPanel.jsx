@@ -5,12 +5,9 @@ export default function InsightsPanel({ insights = [], loading }) {
   if (!insights.length) return null;
 
   return (
-    <section className="card insights-panel">
-      <div className="section-header">
-        <div>
-          <p className="muted">Listening coach</p>
-          <h3>Insights</h3>
-        </div>
+    <section className="retro-window insights-panel">
+      <div className="retro-titlebar">
+        <span>Insights</span>
         <span className={`status-chip ${loading ? 'is-syncing' : 'is-online'}`}>
           {loading ? 'Refreshing' : 'Live'}
         </span>

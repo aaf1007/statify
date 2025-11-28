@@ -5,11 +5,11 @@ export default function MetricHighlights({ metrics = [] }) {
   if (!metrics.length) return null;
 
   return (
-    <section className="card metric-grid">
-      <div className="section-header">
-        <div>
-          <p className="muted">Live KPIs</p>
-          <h3>Highlights</h3>
+    <section className="retro-window metric-grid">
+      <div className="retro-titlebar">
+        <span>Highlights</span>
+        <div className="stats-window__badge" aria-hidden>
+          KPIs
         </div>
       </div>
       <div className="metric-grid__items">
